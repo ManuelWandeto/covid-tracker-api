@@ -1,8 +1,39 @@
 import * as functions from 'firebase-functions';
+import * as admin from 'firebase-admin';
+import * as express from 'express';
+import * as cors from 'cors';
 
-// // Start writing Firebase Functions
-// // https://firebase.google.com/docs/functions/typescript
-//
-// export const helloWorld = functions.https.onRequest((request, response) => {
-//  response.send("Hello from Firebase!");
-// });
+const serviceAccount: admin.ServiceAccount = require('../assets/firebasePermissions.json');
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL:
+        "https://covid-tracker-api-c2a95.firebaseio.com",
+})
+
+const app = express();
+const db = admin.firestore();
+const corsOptions: cors.CorsOptions = {
+    origin: true
+}
+
+app.use(cors(corsOptions))
+
+app.get('/globalStats', async (req, res) => {
+    const docRef = db.collection("Stats").doc("globalStats");
+    docRef.get().then((doc) => {
+        if (doc.exists) {
+            res.send(JSON.stringify(doc.data()));
+        } else {
+            res.statusMessage = "document not found";
+            res
+                .status(404)
+                .end()
+        }
+    }).catch(err => {
+        res.statusMessage = "internal server error";
+        res.status(500).end()
+    });
+});
+
+exports.api = functions.https.onRequest(app);
