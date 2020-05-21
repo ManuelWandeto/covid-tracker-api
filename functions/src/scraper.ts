@@ -2,7 +2,11 @@ import * as puppeteer from 'puppeteer';
 import * as interfaces from './interfaces';
 
 export async function scrapeGlobalStats() {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+        args: [
+            '--no-sandbox'
+        ]
+    });
     const page = await browser.newPage();
 
     await page.goto("https://ncov2019.live", {waitUntil: "networkidle2"});
