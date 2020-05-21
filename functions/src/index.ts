@@ -38,11 +38,10 @@ app.get('/globalStats', async (req, res) => {
     });
 });
 
-exports.api = functions.https.onRequest(app);
+exports.api = functions.runWith({memory: "256MB", timeoutSeconds: 25}).https.onRequest(app);
 exports.scrapeStats = functions
-        .runWith({memory: "1GB", timeoutSeconds: 30})
-        .region('asia-east2')
-        .pubsub.schedule("every 15 minutes")
+        .runWith({memory: "1GB", timeoutSeconds: 45})
+        .pubsub.schedule("every 30 minutes")
         .onRun(async (context) => {
             const stats = await scrapeGlobalStats();
             const statusMsg = await persistStats(db, stats);
