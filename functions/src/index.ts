@@ -38,18 +38,13 @@ app.get('/globalStats', async (req, res) => {
     });
 });
 
-app.get('/scrapeStats', async (req, res) => {
-    try {
-        const stats = await scrapeGlobalStats();
-        persistStats(db, stats).then(msg => console.log(msg)).catch(errMsg => console.log(errMsg));
-        res.status(200).send(JSON.stringify(stats));
-    } catch (error) {
-        console.log(error);
-        res.statusMessage = "Error scraping stats";
-        res.status(500);
-        res.end();
-    }
-
-})
-
-exports.api = functions.runWith({memory: "1GB", timeoutSeconds: 30}).https.onRequest(app);
+exports.api = functions.https.onRequest(app);
+exports.scrapeStats = functions
+        .runWith({memory: "1GB", timeoutSeconds: 30})
+        .region('asia-east2')
+        .pubsub.schedule("every 15 minutes")
+        .onRun(async (context) => {
+            const stats = await scrapeGlobalStats();
+            const statusMsg = await persistStats(db, stats);
+            console.log(statusMsg);
+        })
