@@ -2,6 +2,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as express from 'express';
 import * as cors from 'cors';
+import { scrapeGlobalStats } from './scraper';
 
 const serviceAccount: admin.ServiceAccount = require('../assets/firebasePermissions.json');
 
@@ -35,5 +36,18 @@ app.get('/globalStats', async (req, res) => {
         res.status(500).end()
     });
 });
+
+app.get('/scrapeStats', async (req, res) => {
+    try {
+        const stats = await scrapeGlobalStats();
+        res.status(200).send(JSON.stringify(stats));
+    } catch (error) {
+        console.log(error);
+        res.statusMessage = "Error scraping stats";
+        res.status(500);
+        res.end();
+    }
+
+})
 
 exports.api = functions.https.onRequest(app);
