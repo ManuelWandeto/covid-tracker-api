@@ -4,7 +4,8 @@ import * as interfaces from './interfaces';
 export async function scrapeGlobalStats() {
     const browser = await puppeteer.launch({
         args: [
-            '--no-sandbox'
+            '--no-sandbox',
+            '--disable-setuid-sandbox'
         ]
     });
     const page = await browser.newPage();
@@ -61,5 +62,6 @@ export async function scrapeGlobalStats() {
         }
 
     })
+    await browser.close();
     return stats;
 }
