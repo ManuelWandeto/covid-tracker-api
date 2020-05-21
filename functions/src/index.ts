@@ -50,4 +50,4 @@ app.get('/scrapeStats', async (req, res) => {
 
 })
 
-exports.api = functions.https.onRequest(app);
+exports.api = functions.runWith({memory: "1GB", timeoutSeconds: 30}).https.onRequest(app);
