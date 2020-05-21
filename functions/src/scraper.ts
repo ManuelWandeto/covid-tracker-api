@@ -6,7 +6,6 @@ export async function scrapeGlobalStats() {
     const page = await browser.newPage();
 
     await page.goto("https://ncov2019.live", {waitUntil: "networkidle2"});
-    // tslint:disable-next-line: no-void-expression
     const stats = await page.evaluate(() => {
         const worldRows = document.querySelectorAll('#container_world .dataTables_scrollBody tbody > tr');
         const statsJson: interfaces.CountryData[] = [];
