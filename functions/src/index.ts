@@ -3,6 +3,7 @@ import * as admin from 'firebase-admin';
 import * as express from 'express';
 import * as cors from 'cors';
 import { scrapeGlobalStats } from './scraper';
+import { persistStats } from './persist';
 
 const serviceAccount: admin.ServiceAccount = require('../assets/firebasePermissions.json');
 
@@ -40,6 +41,7 @@ app.get('/globalStats', async (req, res) => {
 app.get('/scrapeStats', async (req, res) => {
     try {
         const stats = await scrapeGlobalStats();
+        persistStats(db, stats).then(msg => console.log(msg)).catch(errMsg => console.log(errMsg));
         res.status(200).send(JSON.stringify(stats));
     } catch (error) {
         console.log(error);
