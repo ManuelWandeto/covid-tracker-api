@@ -1,5 +1,6 @@
 import * as puppeteer from 'puppeteer';
 import * as interfaces from './interfaces';
+import * as countryLookup from 'country-code-lookup';
 
 export async function scrapeGlobalStats() {
     const browser = await puppeteer.launch({
@@ -11,9 +12,10 @@ export async function scrapeGlobalStats() {
     const page = await browser.newPage();
 
     await page.goto("https://ncov2019.live", {waitUntil: "networkidle2"});
-    const stats = await page.evaluate(() => {
+
+    const scrapedStats = await page.evaluate(() => {
         const worldRows = document.querySelectorAll('#container_world .dataTables_scrollBody tbody > tr');
-        const statsJson: interfaces.CountryData[] = [];
+        const statsJson: any[] = [];
 
         const getCellData = (row: Element, className: string) => {
             const cellValue = row.querySelector(`td.${className}`)?.getAttribute("data-order");
@@ -25,7 +27,7 @@ export async function scrapeGlobalStats() {
         }
 
         if(worldRows?.length > 0) {
-            Array.from(worldRows).forEach(row => {
+            Array.from(worldRows).forEach(async row => {
                 const country = row.querySelector("td.text--gray")?.textContent?.replace('★', '').trim();
                 if(country) {
                     statsJson.push({
@@ -41,27 +43,40 @@ export async function scrapeGlobalStats() {
                 }
             })
             
-            const globalTotals = statsJson.shift();
-            let totals: interfaces.GlobalData;
-            if(globalTotals) {
-                delete globalTotals["countryName"];
-                totals = globalTotals as interfaces.GlobalData
-
-                const worldwideStats: interfaces.WorldwideStats = {
-                    worldwide: totals,
-                    countries: statsJson
-                }
-
-                return worldwideStats;
-            } else {
-                throw new Error("global totals is null");
-            }
-
+            return statsJson;
         } else {
             throw new Error("problem scraping rows from world stats in ncovLive.com")
         }
-
     })
     await browser.close();
-    return stats;
+    const worlwideStats = parseStats(scrapedStats);
+    return worlwideStats;
+}
+
+function parseStats(rawStats: any[]): interfaces.WorldwideStats {
+    const scrapedStats = rawStats;
+    try {
+        const globalTotals = scrapedStats.shift();
+        delete globalTotals["countryName"];
+        const totals = globalTotals as interfaces.GlobalData;
+        const countries: interfaces.CountryData[] = scrapedStats.map(country => {
+            return {
+                countryCode: getCountryCode(country.countryName),
+                ...country
+            }
+        });
+        const worlwideStats: interfaces.WorldwideStats = {
+            worldwide: totals,
+            countries: countries
+        }
+        return worlwideStats;
+    } catch (error) {
+        throw new Error(error);
+    }
+    
+}
+
+function getCountryCode(countryName: string): string {
+    const code = countryLookup.byCountry(countryName)?.internet;
+    return code;
 }
