@@ -1,5 +1,6 @@
 export interface CountryData {
     countryName: string,
+    countryCode: string,
     confirmed: number,
     active: number,
     recovered: number,
