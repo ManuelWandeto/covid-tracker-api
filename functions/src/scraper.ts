@@ -10,12 +10,13 @@ export async function scrapeGlobalStats() {
         ]
     });
     const page = await browser.newPage();
-
+    
     await page.goto("https://ncov2019.live", {waitUntil: "networkidle2"});
+    
 
-    const scrapedStats = await page.evaluate(() => {
+    const stats = await page.evaluate(() => {
         const worldRows = document.querySelectorAll('#container_world .dataTables_scrollBody tbody > tr');
-        const statsJson: any[] = [];
+        const statData: interfaces.StatData[] = [];
 
         const getCellData = (row: Element, className: string) => {
             const cellValue = row.querySelector(`td.${className}`)?.getAttribute("data-order");
@@ -30,8 +31,8 @@ export async function scrapeGlobalStats() {
             Array.from(worldRows).forEach(async row => {
                 const country = row.querySelector("td.text--gray")?.textContent?.replace('★', '').trim();
                 if(country) {
-                    statsJson.push({
-                        countryName: country,
+                    statData.push({
+                        ...country !== 'TOTAL' ? {countryName: country} : {},
                         confirmed: getCellData(row, "sorting_1"),
                         active: getCellData(row, "text--yellow"),
                         recovered: getCellData(row, "text--blue"),
@@ -43,40 +44,31 @@ export async function scrapeGlobalStats() {
                 }
             })
             
-            return statsJson;
+            return statData;
         } else {
             throw new Error("problem scraping rows from world stats in ncovLive.com")
         }
     })
     await browser.close();
-    const worlwideStats = parseStats(scrapedStats);
-    return worlwideStats;
-}
-
-function parseStats(rawStats: any[]): interfaces.WorldwideStats {
-    const scrapedStats = rawStats;
-    try {
-        const globalTotals = scrapedStats.shift();
-        delete globalTotals["countryName"];
-        const totals = globalTotals as interfaces.GlobalData;
-        const countries: interfaces.CountryData[] = scrapedStats.map(country => {
-            return {
-                countryCode: getCountryCode(country.countryName),
-                ...country
-            }
-        });
-        const worlwideStats: interfaces.WorldwideStats = {
+    const totals = stats.shift();
+    if (totals !== undefined) {
+        const worldwideStats: interfaces.WorldwideStats = {
             worldwide: totals,
-            countries: countries
+            countries: stats.map(country => {
+                if(country.countryName) {
+                    const code = countryLookup.byCountry(country.countryName)?.internet;
+                    const countryData : interfaces.StatData =  {
+                        ...code !== undefined ? {countryCode: code} : {},
+                        ...country
+                    }
+                    return countryData;
+                } else {
+                    return country;
+                }
+            })
         }
-        return worlwideStats;
-    } catch (error) {
-        throw new Error(error);
+        return worldwideStats;
+    } else {
+        throw new Error('scrape operation yielded non truthy data')
     }
-    
-}
-
-function getCountryCode(countryName: string): string {
-    const code = countryLookup.byCountry(countryName)?.internet;
-    return code;
 }
