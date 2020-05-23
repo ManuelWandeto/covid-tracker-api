@@ -58,7 +58,6 @@ export async function scrapeGlobalStats() {
                 if(country.countryName) {
                     const countryInfo = getGeoInfo(country.countryName);
                     const countryData : interfaces.StatData =  {
-                        // ...countryInfo?.code ? {countryCode: code} : {},
                         ...countryInfo?.code ? {countryCode: countryInfo.code} : {},
                         ...countryInfo? {
                             latLng: {
