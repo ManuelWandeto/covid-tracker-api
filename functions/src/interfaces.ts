@@ -1,6 +1,10 @@
 export interface StatData {
     countryName?: string,
     countryCode?: string,
+    latLng?: {
+        latitude: number,
+        longitude: number
+    }
     confirmed: number,
     active: number,
     recovered: number,
