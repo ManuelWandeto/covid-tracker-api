@@ -1,6 +1,6 @@
 import * as puppeteer from 'puppeteer';
 import * as interfaces from './interfaces';
-import * as countryLookup from 'country-code-lookup';
+import * as CountriesJson from './assets/countries.json';
 
 export async function scrapeGlobalStats() {
     const browser = await puppeteer.launch({
@@ -56,9 +56,16 @@ export async function scrapeGlobalStats() {
             worldwide: totals,
             countries: stats.map(country => {
                 if(country.countryName) {
-                    const code = countryLookup.byCountry(country.countryName)?.internet;
+                    const countryInfo = getGeoInfo(country.countryName);
                     const countryData : interfaces.StatData =  {
-                        ...code !== undefined ? {countryCode: code} : {},
+                        // ...countryInfo?.code ? {countryCode: code} : {},
+                        ...countryInfo?.code ? {countryCode: countryInfo.code} : {},
+                        ...countryInfo? {
+                            latLng: {
+                                latitude: countryInfo.lat,
+                                longitude: countryInfo.lng
+                            }
+                        }: {},
                         ...country
                     }
                     return countryData;
@@ -70,5 +77,22 @@ export async function scrapeGlobalStats() {
         return worldwideStats;
     } else {
         throw new Error('scrape operation yielded non truthy data')
+    }
+}
+
+function getGeoInfo(countryName: string) : {code: string, lat: number, lng: number} | undefined {
+    const countries = CountriesJson.countryList;
+    const countryInfo = countries.find(country => {
+        return country.name.includes(countryName);
+    });
+    if(countryInfo !== undefined) {
+        return {
+            code: countryInfo.country,
+            lat: <number>countryInfo?.latitude,
+            lng: <number>countryInfo?.longitude
+        }
+    } else {
+        console.error(`no country object found for ${countryName}`);
+        return;
     }
 }
