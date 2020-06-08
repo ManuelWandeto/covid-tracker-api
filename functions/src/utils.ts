@@ -23,11 +23,10 @@ export async function writeStatsToFile<T>(file: File, data: T) {
         const jsonString = JSON.stringify(data);
         file.save(jsonString, {contentType: 'application/json'}, (err) => {
             if(err) {
-                statusMsg = `error writting data to file: ${err}`;
-            } else {
-                statusMsg = `successfully wrote data to file: ${new Date()}`;
+                throw new Error(`error writting data to file: ${err}`);
             }
         });
+        statusMsg = `successfully wrote file: ${new Date()}`;
     } catch (error) {
         statusMsg = `error occured while writing stats to file: ${error}`;
     }
