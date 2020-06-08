@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer';
 
-export interface countryData {
+export interface CountryData {
     [index: string]: any, //index signature
     countryCode: string;
     stateCode?: string;
@@ -34,7 +34,7 @@ interface responseData {
 
 
 export default async function getGlobalData() {
-    let placeData: countryData[] = [];
+    let placeData: CountryData[] = [];
     const browser = await puppeteer.launch({headless: true, args: ['--no-sandbox']});
 
     try {
