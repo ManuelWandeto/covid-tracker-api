@@ -1,17 +1,12 @@
-import getGlobalData from './globalDataScraper';
-import scrapeRegions, {RegionData} from './regionScraper';
+import { CountryData } from './globalDataScraper';
+import {RegionData} from './regionScraper';
 import {StateData, GlobalStats} from './interfaces';
 import {groupBy} from './utils';
 import slugify from 'slug';
 import * as countryJson from './assets/countries.json';
 
-export default async function getData() {
+export default async function getData(globalData: CountryData[], regionData: RegionData[]) {
     try {
-        const regions = ['world', 'unitedstates', 'canada', 'australia', 'russia', 'italy'];
-        
-        const globalData = await getGlobalData();
-        const regionData = await scrapeRegions(regions);
-        
         if(globalData && regionData) {
             const combined: StateData[] = [];
             globalData.forEach(country => {
