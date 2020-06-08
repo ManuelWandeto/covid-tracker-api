@@ -22,7 +22,7 @@ export default async function scrapeRegionStats(regions: string[]) {
     try {
         const pages = await  Promise.all(regions.map(async region => await browser.newPage()));
         const dataPromises = regions.map(async (region, index) => {
-            const data = await scrapeRegionTable(pages[index],region, 50000)
+            const data = await scrapeRegionTable(pages[index],region, 0)
                             .catch(err => {throw new Error(`error scraping table of ${region}: ${err}`)});
             return data;
         });
