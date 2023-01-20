@@ -5,10 +5,9 @@ export interface CountryData {
     countryCode: string;
     stateCode?: string;
     countryName: string;
-    latlng: {
-        latitude: number,
-        longitude: number
-    }
+    latitude: number;
+    longitude: number;
+    vaccinated?: number;
     deaths: number;
     recovered: number;
     confirmed: number;
@@ -18,6 +17,7 @@ export interface CountryData {
 
 interface responseData {
     lastUpdated: Date;
+    vaccinated: number;
     recovered: number;
     infected: number;
     id: string;
@@ -33,21 +33,21 @@ interface responseData {
 }
 
 
-export default async function getGlobalData() {
+export default async function getGlobalCountryData() {
     let placeData: CountryData[] = [];
-    const browser = await puppeteer.launch({headless: true, args: ['--no-sandbox']});
+    const browser = await puppeteer.launch({headless: true});
 
     try {
         const [page] = await browser.pages();
 
         page.on('response', async (res) => {
             const request = res.request();
-            if(request.url().includes('https://coronavirus.app/get-places')) {
-                const json = await res.json() as {data: responseData[]};
-                const availableCountries = json.data.filter(region => region.invisible !== true);
-                placeData = availableCountries.map(region => 
+            if(request.url().includes('/data/placelist.js')) {
+                // response is application/javascript with 'window.dataPlaceList = [json array of items];'
+                let json = JSON.parse((await res.text()).replace('window.dataPlaceList = ', '').replace(';', ''))
+                placeData = (json as responseData[]).map(region => 
                     {
-                        const {name, country, dead, infected, state, latitude, longitude, pop, recovered, sick} = region;
+                        const {name, country, dead, infected, state, latitude, longitude, pop, recovered, sick, vaccinated} = region;
                         return {
                             countryCode: country,
                             ...state ? {stateCode: state} : {},
@@ -55,12 +55,11 @@ export default async function getGlobalData() {
                             active: sick,
                             deaths: dead,
                             confirmed: infected,
-                            latlng: {
-                                latitude: latitude,
-                                longitude: longitude
-                            },
+                            vaccinated,
+                            latitude,
+                            longitude,
                             population: pop,
-                            recovered: recovered
+                            recovered
                         }
                     }
                 );
@@ -68,7 +67,8 @@ export default async function getGlobalData() {
         })
         let retries = 3;
         do {
-            await page.goto('https://coronavirus.app/map', {waitUntil: 'networkidle2'});
+            await page.goto('https://coronavirus.app/map');
+            await page.waitForNetworkIdle();
             if(retries <= 0) {
                 break;
             } else {
