@@ -2,16 +2,19 @@ import {StateData} from './interfaces';
 import fs, {promises as fsPromises } from 'fs'
 import Path, { dirname } from 'path'
 
-export function groupBy(array: StateData[], key: string) {
-    interface region {key: string; states: StateData[]};
+// intermediate interface
+interface Region {code: string; states: StateData[]};
+export function groupByStates(states: StateData[], key ="countryCode"): Region[] {
 
-    return array.reduce((result: region[], currentValue) => {
+    return states.reduce((result: Region[], currentValue) => {
         // tslint:disable-next-line: no-shadowed-variable
-        const region = result.find(region => region.key === currentValue[key]);
+        // find a region in the result array of regions whose countrycode is equal to current value
+        const region = result.find(region => region.code === currentValue[key]);
         if(region === undefined) {
-            result.push({key: currentValue[key], states: [currentValue]});
+            // if none found, push a new object containing current value
+            result.push({code: currentValue[key], states: [currentValue]});
         }
-        
+        // since arrays are passed by reference, if region is found, push currrent value to its states property
         region?.states.push(currentValue);
 
         return result;
@@ -111,7 +114,7 @@ export async function writeStatsToFile<T>(path: string, data: T, maxVersions = 3
 }
 
 export function readStatsFromFile<T>(path: string): T {
-    const absolutePath = Path.resolve(path);
+    const absolutePath = Path.isAbsolute(path) ? path : Path.resolve(path);
     try {
         
         const rawData = fs.readFileSync(absolutePath, {encoding: 'utf8'})
