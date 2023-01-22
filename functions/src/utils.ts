@@ -1,6 +1,7 @@
 import {StateData} from './interfaces';
 import fs, {promises as fsPromises } from 'fs'
 import Path, { dirname } from 'path'
+import path from 'path';
 
 // intermediate interface
 interface Region {code: string; states: StateData[]};
@@ -21,9 +22,10 @@ export function groupByStates(states: StateData[], key ="countryCode"): Region[]
     }, [])
 }
 
-async function olderThan(file: string, minutes: number) : Promise<boolean> {
+export async function olderThan(file: string, minutes: number) : Promise<boolean> {
     try {
-        const stats = await fsPromises.stat(file)
+        const absolutePath = Path.isAbsolute(file) ? file : Path.resolve(file);
+        const stats = await fsPromises.stat(absolutePath)
         const currentTime = new Date()
         if ((stats.birthtime.getMinutes() - currentTime.getMinutes()) > minutes) {
             return true;
