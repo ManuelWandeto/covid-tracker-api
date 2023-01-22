@@ -2,14 +2,14 @@ import puppeteer, {Page} from 'puppeteer';
 import { ConsoleMessage } from 'puppeteer';
 import {RegionData} from './interfaces';
 
-export default async function scrapeRegionStats(regions: string[]): Promise<RegionData[]> {
+export default async function scrapeRegionStats(regions: string[], timeout = 120000): Promise<RegionData[]> {
     const browser = await puppeteer.launch({
         headless: true,
     });
     try {
         const pages = await  Promise.all(regions.map(async () => await browser.newPage()));
         const regionData = regions.map(async (region, index) => {
-            return await scrapeRegionTable(pages[index],region, 120000)
+            return await scrapeRegionTable(pages[index], region, timeout)
                             .catch(err => {
                                 throw new Error(`error scraping table of ${region}: ${err}`)
                             });
