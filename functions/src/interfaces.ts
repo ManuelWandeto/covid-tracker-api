@@ -2,6 +2,7 @@ export interface StateData {
     [index: string]: any,
     name: string,
     countryCode: string,
+    stateCode?: string,
     states?: StateData[],
     latitude: number,
     longitude: number,
