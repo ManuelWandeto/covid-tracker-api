@@ -1,20 +1,5 @@
 import puppeteer from 'puppeteer';
-
-export interface CountryData {
-    [index: string]: any, //index signature
-    countryCode: string;
-    stateCode?: string;
-    countryName: string;
-    latitude: number;
-    longitude: number;
-    vaccinated?: number;
-    deaths: number;
-    recovered: number;
-    confirmed: number;
-    population: number;
-    active: number;
-}
-
+import {CountryData} from './interfaces'
 interface responseData {
     lastUpdated: Date;
     vaccinated: number;
@@ -33,7 +18,7 @@ interface responseData {
 }
 
 
-export default async function getGlobalCountryData() {
+export default async function getGlobalCountryData(timeout = 40000) {
     let placeData: CountryData[] = [];
     const browser = await puppeteer.launch({headless: true});
 
@@ -45,7 +30,8 @@ export default async function getGlobalCountryData() {
             if(request.url().includes('/data/placelist.js')) {
                 // response is application/javascript with 'window.dataPlaceList = [json array of items];'
                 let json = JSON.parse((await res.text()).replace('window.dataPlaceList = ', '').replace(';', ''))
-                placeData = (json as responseData[]).map(region => 
+                // remove ones with invisible set to true as they contain unknown population
+                placeData = (json as responseData[]).filter(region => region.invisible !== true).map(region => 
                     {
                         const {name, country, dead, infected, state, latitude, longitude, pop, recovered, sick, vaccinated} = region;
                         return {
@@ -67,7 +53,7 @@ export default async function getGlobalCountryData() {
         })
         let retries = 3;
         do {
-            await page.goto('https://coronavirus.app/map');
+            await page.goto('https://coronavirus.app/map', {timeout});
             await page.waitForNetworkIdle();
             if(retries <= 0) {
                 break;
