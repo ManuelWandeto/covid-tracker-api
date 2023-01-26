@@ -1,7 +1,6 @@
 import {StateData} from './interfaces';
 import fs, {promises as fsPromises } from 'fs'
 import Path, { dirname } from 'path'
-import path from 'path';
 
 // intermediate interface
 interface Region {code: string; states: StateData[]};
