@@ -36,7 +36,7 @@ function logger(msg: ConsoleMessage) {
         console.log(`${msg.args()[i]}`);
     }
 }
-async function scrapeRegionTable(page: Page, regionName: string, timeout = 30000) {
+async function scrapeRegionTable(page: Page, regionName: string, timeout: number) {
     
     // below enables console logs within page.evaluate context to be shown on node's console output
     page.on('console', logger);
