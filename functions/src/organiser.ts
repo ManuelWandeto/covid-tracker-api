@@ -52,7 +52,7 @@ export default async function organizeData(globalCountryData: CountryData[], reg
                     interface Country {country: string, name: string, longitude: number, latitude: number};
                     // since we want to get region stats for all states combined 
                     // and since region data doesn't come with country codes, we use countries.json
-                    const countriesData = readStatsFromFile<{countryList: Country[]}>(__dirname + `\\assets\\countries.json`)
+                    const countriesData = readStatsFromFile<{countryList: Country[]}>(__dirname + `/assets/countries.json`)
                     if(!countriesData) throw new Error(`Error loading country list from countries.json`);
                     const countryJsonMatch = countriesData.countryList.find(country => country.country === region.code);
                     // we need a matching record in countries.json so as to get the whole regions' cordingates and also its official name
