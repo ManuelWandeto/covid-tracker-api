@@ -5,6 +5,8 @@ import {RegionData} from './interfaces';
 export default async function scrapeRegionStats(regions: string[], timeout = 120000): Promise<RegionData[]> {
     const browser = await puppeteer.launch({
         headless: true,
+        executablePath: '/usr/bin/chromium-browser',
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
     try {
         const pages = await  Promise.all(regions.map(async () => await browser.newPage()));

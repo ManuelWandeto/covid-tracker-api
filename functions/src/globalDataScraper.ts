@@ -20,7 +20,12 @@ interface responseData {
 
 export default async function getGlobalCountryData(timeout = 40000) {
     let placeData: CountryData[] = [];
-    const browser = await puppeteer.launch({headless: true});
+    const browser = await puppeteer.launch(
+        {
+            headless: true,
+            executablePath: '/usr/bin/chromium-browser',
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        });
 
     try {
         const [page] = await browser.pages();
