@@ -4,6 +4,7 @@
   "scripts": {
     "lint": "tslint --project tsconfig.json",
     "dev": "tsc -w",
+    "build": "tsc --build --clean && tsc",
     "start": "node lib/index.js",
     "test": "jest --coverage"
   },
