@@ -8,7 +8,7 @@ import organizeData from './organiser';
 import schedule from 'node-schedule'
 
 
-schedule.scheduleJob('getGlobalCountryData', '*/15 * * * *', async () => {
+schedule.scheduleJob('getGlobalCountryData', '*/10 * * * *', async () => {
     try {
         const countryData = await scrapeGlobalStats(60000)
         const statusMsg = await writeStatsToFile<CountryData[]>('./data/global_country_data.json', countryData)
@@ -30,7 +30,7 @@ schedule.scheduleJob('getRegionData', '*/10 * * * *', async () => {
     }
 })
 
-schedule.scheduleJob('organiseData', '*/20 * * * *', async () => {
+schedule.scheduleJob('organiseData', '*/15 * * * *', async () => {
     try {
         if(await olderThan("./data/region_stats.json", 1440) || await olderThan("./data/global_country_data.json", 1440)) {
             console.log(`WARN: Data is getting stale`)
