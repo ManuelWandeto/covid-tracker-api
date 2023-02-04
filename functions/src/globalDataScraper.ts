@@ -1,23 +1,8 @@
 import puppeteer from 'puppeteer';
-
-export interface CountryData {
-    [index: string]: any, //index signature
-    countryCode: string;
-    stateCode?: string;
-    countryName: string;
-    latlng: {
-        latitude: number,
-        longitude: number
-    }
-    deaths: number;
-    recovered: number;
-    confirmed: number;
-    population: number;
-    active: number;
-}
-
+import {CountryData} from './interfaces'
 interface responseData {
     lastUpdated: Date;
+    vaccinated: number;
     recovered: number;
     infected: number;
     id: string;
@@ -33,21 +18,27 @@ interface responseData {
 }
 
 
-export default async function getGlobalData() {
+export default async function getGlobalCountryData(timeout = 40000) {
     let placeData: CountryData[] = [];
-    const browser = await puppeteer.launch({headless: true, args: ['--no-sandbox']});
+    const browser = await puppeteer.launch(
+        {
+            headless: true,
+            executablePath: '/usr/bin/chromium-browser',
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        });
 
     try {
         const [page] = await browser.pages();
 
         page.on('response', async (res) => {
             const request = res.request();
-            if(request.url().includes('https://coronavirus.app/get-places')) {
-                const json = await res.json() as {data: responseData[]};
-                const availableCountries = json.data.filter(region => region.invisible !== true);
-                placeData = availableCountries.map(region => 
+            if(request.url().includes('/data/placelist.js')) {
+                // response is application/javascript with 'window.dataPlaceList = [json array of items];'
+                let json = JSON.parse((await res.text()).replace('window.dataPlaceList = ', '').replace(';', ''))
+                // remove ones with invisible set to true as they contain unknown population
+                placeData = (json as responseData[]).filter(region => region.invisible !== true).map(region => 
                     {
-                        const {name, country, dead, infected, state, latitude, longitude, pop, recovered, sick} = region;
+                        const {name, country, dead, infected, state, latitude, longitude, pop, recovered, sick, vaccinated} = region;
                         return {
                             countryCode: country,
                             ...state ? {stateCode: state} : {},
@@ -55,12 +46,11 @@ export default async function getGlobalData() {
                             active: sick,
                             deaths: dead,
                             confirmed: infected,
-                            latlng: {
-                                latitude: latitude,
-                                longitude: longitude
-                            },
+                            vaccinated,
+                            latitude,
+                            longitude,
                             population: pop,
-                            recovered: recovered
+                            recovered
                         }
                     }
                 );
@@ -68,7 +58,8 @@ export default async function getGlobalData() {
         })
         let retries = 3;
         do {
-            await page.goto('https://coronavirus.app/map', {waitUntil: 'networkidle2'});
+            await page.goto('https://coronavirus.app/map', {timeout});
+            await page.waitForNetworkIdle();
             if(retries <= 0) {
                 break;
             } else {

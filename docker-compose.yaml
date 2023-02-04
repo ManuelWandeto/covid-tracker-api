@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  nginx-proxy:
+    networks:
+      - api
+    restart: always
+    image: jwilder/nginx-proxy
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/etc/nginx/vhost.d"
+      - "/usr/share/nginx/html"
+      - "/var/run/docker.sock:/tmp/docker.sock:ro"
+      - "/etc/nginx/certs"
+
+  letsencrypt-nginx-proxy-companion:
+    networks:
+      - api
+    restart: always
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    volumes:
+      - "/etc/acme.sh"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    volumes_from:
+      - "nginx-proxy"
+
+  api:
+    build: ./
+    image: api:v2
+    restart: always
+    networks:
+      - api
+    volumes: 
+      - ./data:/app/data/
+    env_file:
+      - .env
+
+networks:
+  api:

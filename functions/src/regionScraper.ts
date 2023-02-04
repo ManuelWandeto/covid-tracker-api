@@ -1,32 +1,22 @@
-import puppeteer from 'puppeteer';
+import puppeteer, {Page} from 'puppeteer';
+import { ConsoleMessage } from 'puppeteer';
+import {RegionData} from './interfaces';
 
-export interface RegionData {
-    region?: string,
-    countryName?: string,
-    tests: number,
-    confirmed: number,
-    active: number,
-    recovered: number,
-    critical: number,
-    deaths: number
-}
-
-export default async function scrapeRegionStats(regions: string[]) {
+export default async function scrapeRegionStats(regions: string[], timeout = 120000): Promise<RegionData[]> {
     const browser = await puppeteer.launch({
         headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox'
-        ]
+        executablePath: '/usr/bin/chromium-browser',
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
     try {
-        const pages = await  Promise.all(regions.map(async region => await browser.newPage()));
-        const dataPromises = regions.map(async (region, index) => {
-            const data = await scrapeRegionTable(pages[index],region, 0)
-                            .catch(err => {throw new Error(`error scraping table of ${region}: ${err}`)});
-            return data;
+        const pages = await  Promise.all(regions.map(async () => await browser.newPage()));
+        const regionData = regions.map(async (region, index) => {
+            return await scrapeRegionTable(pages[index], region, timeout)
+                            .catch(err => {
+                                throw new Error(`error scraping table of ${region}: ${err}`)
+                            });
         });
-        const stats = await Promise.all(dataPromises);
+        const stats = await Promise.all(regionData);
 
         if(stats) {
             return ([] as RegionData[]).concat(...stats);
@@ -34,56 +24,94 @@ export default async function scrapeRegionStats(regions: string[]) {
             throw new Error(`region scrape yielded untruthy data`);
         }
     } catch (error) {
-        throw new Error(error);
+        throw error;
     } finally {
         await browser.close();
     }  
 }
+function logger(msg: ConsoleMessage) {
+    for (let i = 0; i < msg.args().length; ++i)
+    // only show console logs that begin with "eval:" (to only see our console logs)
+    if(msg.args()[i].toString().includes('eval:')) {
+        console.log(`${msg.args()[i]}`);
+    }
+}
+async function scrapeRegionTable(page: Page, regionName: string, timeout: number) {
+    
+    // below enables console logs within page.evaluate context to be shown on node's console output
+    page.on('console', logger);
 
-async function scrapeRegionTable(page: puppeteer.Page, regionName: string, timeout = 30000) {
-    await page.goto("https://ncov2019.live", {waitUntil: "networkidle2", timeout: timeout});
+    await page.goto("https://ncov2019.live", {timeout});
+    await page.waitForNetworkIdle();
+    const rowsSelector = `#container_${regionName.toLowerCase()} #sortable_table_${regionName.toLowerCase()}_wrapper .dataTables_scroll .dataTables_scrollBody table[id="sortable_table_${regionName.toLowerCase()}"] tbody > tr`
+    await page.waitForSelector(rowsSelector, {timeout})
 
     // tslint:disable-next-line: no-shadowed-variable
-    const stats = await page.evaluate((regionName) => {
-        const region = regionName as string;
+    const stats = await page.$$eval(rowsSelector, (dataRows, regionName) => {
 
-        const dataRows = document.querySelectorAll(`#container_${region} .dataTables_scrollBody tbody > tr`);
-        const statData: RegionData[] = [];
-
-        const getCellData = (row: Element, className: string) => {
-            const cellValue = row.querySelector(`td.${className}`)?.getAttribute("data-order");
-            if(cellValue) {
-                return parseInt(cellValue);
-            } else {
-                throw new Error(`no data-order value for: td.${className}`);
+        return new Promise<RegionData[]>((resolve, reject) => {
+            if (dataRows.length == 0) {
+                reject("no data row elements");
             }
-        }
-
-        if(dataRows?.length > 0) {
-            Array.from(dataRows).forEach(async row => {
-                const country = row.querySelector("td.text--gray")?.textContent?.replace('★', '').trim();
-                if(country) {
-                    statData.push({
-                        ...country.toLowerCase() === 'total'
-                            ? {region: `${region}`}
-                            : {countryName: country},
-                        tests: getCellData(row, 'text--amber'),
-                        confirmed: getCellData(row, "sorting_1"),
-                        active: getCellData(row, "text--yellow"),
-                        recovered: getCellData(row, "text--blue"),
-                        critical: getCellData(row, "text--orange"),
-                        deaths: getCellData(row, "text--red"),
-                    })
-                } else {
-                    throw new Error("Error scraping from document elements")
-                }
-            })
+            const statData: RegionData[] = [];
             
-            return statData;
-        } else {
-            throw new Error(`problem scraping rows from ${region} stats in ncovLive.com`)
-        }
-    }, regionName.toLowerCase());
+            const getCellValue = (row: Element, className: string, fromAttribute ="data-order"): number | null => {
+                const cell = row.querySelector<HTMLTableCellElement>(`td.${className}`)
+                if(!cell) {
+                    reject(`eval: no cell found for td.${className}`);
+                } 
+                const cellValue = cell!.getAttribute(fromAttribute);
+                if(cellValue == null) {
+                    console.log(`eval: could not get "data-order" attribute of cell: ${cell}`)
+                    return null;
+                } 
+                return parseFloat(cellValue!) === -1 ? null : Math.round(parseFloat(cellValue!));
+                
+            }
+            const getAreaType = (row: Element, fromAttribute="data-type"): string | null => {
+                const areaType = row.querySelector("td.text--gray > div.flex > span:first-child")?.getAttribute(fromAttribute)
+                if (!areaType) {
+                    return null
+                }
+                return areaType.toLowerCase()
+            }
+            Array.from(dataRows).forEach((row, index) => {
+                let areaType : string | null, areaField: string | null;
+                if (index === 0) {
+                    areaField = row.querySelector("td.text--gray")?.textContent ?? null
+                    areaType = "region"
+                } else {
+                    areaType = getAreaType(row)
+                    areaField = row.querySelector("td.text--gray > div.flex > span:last-child")?.textContent?.trim() ?? null;
+
+                }
+                if (!areaType) {
+                    reject(`eval: area type could not be found`)
+                }
+                if (!areaField) {
+                    console.log(`eval: area field is undefined for table row: ${index}`)
+                }
+                statData.push({
+                    ...areaType! === "region"
+                        ? {regionName: `${regionName}`} 
+                        : areaType === "country"
+                        ? {countryName: areaField!}
+                        : {stateName: areaField!},
+                    areaType: areaType!,
+                    tests: getCellValue(row, 'text--amber'),
+                    confirmed: getCellValue(row, "sorting_1"),
+                    active: getCellValue(row, "text--yellow"),
+                    recovered: getCellValue(row, "text--blue"),
+                    deaths: getCellValue(row, "text--red"),
+                    vaccinated: getCellValue(row, 'text--cyan')
+                })
+            })
+            if (statData.length == 0) {
+                reject("eval: yielded no statData")
+            }
+            resolve(statData)
+        
+    })}, regionName.toLowerCase());
     if (stats) {
         return stats;
     } else {
