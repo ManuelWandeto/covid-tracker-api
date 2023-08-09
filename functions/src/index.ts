@@ -10,7 +10,7 @@ import schedule from 'node-schedule'
 
 schedule.scheduleJob('getGlobalCountryData', '*/10 * * * *', async () => {
     try {
-        const countryData = await scrapeGlobalStats(60000)
+        const countryData = await scrapeGlobalStats()
         const statusMsg = await writeStatsToFile<CountryData[]>('./data/global_country_data.json', countryData)
         console.log(statusMsg)
     } catch (error) {
