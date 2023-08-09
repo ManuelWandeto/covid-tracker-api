@@ -75,21 +75,22 @@ async function scrapeRegionTable(page: Page, regionName: string, timeout: number
                 }
                 return areaType.toLowerCase()
             }
-            Array.from(dataRows).forEach((row, index) => {
+            const regionData = Array.from(dataRows)
+            for (let i = 0; i < regionData.length; i++) {
                 let areaType : string | null, areaField: string | null;
-                if (index === 0) {
-                    areaField = row.querySelector("td.text--gray")?.textContent ?? null
+                if (i === 0) {
+                    areaField = regionData[i].querySelector("td.text--gray")?.textContent ?? null
                     areaType = "region"
                 } else {
-                    areaType = getAreaType(row)
-                    areaField = row.querySelector("td.text--gray > div.flex > span:last-child")?.textContent?.trim() ?? null;
+                    areaType = getAreaType(regionData[i])
+                    areaField = regionData[i].querySelector("td.text--gray > div.flex > span:last-child")?.textContent?.trim() ?? null;
 
                 }
                 if (!areaType) {
                     reject(`eval: area type could not be found`)
                 }
                 if (!areaField) {
-                    console.log(`eval: area field is undefined for table row: ${index}`)
+                    console.log(`eval: area field is undefined for table row: ${i}`)
                 }
                 statData.push({
                     ...areaType! === "region"
@@ -98,14 +99,14 @@ async function scrapeRegionTable(page: Page, regionName: string, timeout: number
                         ? {countryName: areaField!}
                         : {stateName: areaField!},
                     areaType: areaType!,
-                    tests: getCellValue(row, 'text--amber'),
-                    confirmed: getCellValue(row, "sorting_1"),
-                    active: getCellValue(row, "text--yellow"),
-                    recovered: getCellValue(row, "text--blue"),
-                    deaths: getCellValue(row, "text--red"),
-                    vaccinated: getCellValue(row, 'text--cyan')
+                    tests: getCellValue(regionData[i], 'text--amber'),
+                    confirmed: getCellValue(regionData[i], "sorting_1"),
+                    active: getCellValue(regionData[i], "text--yellow"),
+                    recovered: getCellValue(regionData[i], "text--blue"),
+                    deaths: getCellValue(regionData[i], "text--red"),
+                    vaccinated: getCellValue(regionData[i], 'text--cyan')
                 })
-            })
+            }
             if (statData.length == 0) {
                 reject("eval: yielded no statData")
             }
