@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+import puppeteer, { Page } from 'puppeteer';
 import {CountryData} from './interfaces'
 interface responseData {
     lastUpdated: Date;
@@ -28,32 +28,40 @@ export default async function getGlobalCountryData(timeout = 40000) {
         });
 
     try {
-        const [page] = await browser.pages();
+        const pages = await browser.pages();
+        let page: Page
+        if (pages.length) {
+            page = await browser.newPage()
+        } else {
+            page = pages[0]
+        }
+
 
         page.on('response', async (res) => {
             const request = res.request();
             if(request.url().includes('/data/placelist.js')) {
                 // response is application/javascript with 'window.dataPlaceList = [json array of items];'
                 let json = JSON.parse((await res.text()).replace('window.dataPlaceList = ', '').replace(';', ''))
-                // remove ones with invisible set to true as they contain unknown population
-                placeData = (json as responseData[]).filter(region => region.invisible !== true).map(region => 
-                    {
-                        const {name, country, dead, infected, state, latitude, longitude, pop, recovered, sick, vaccinated} = region;
-                        return {
-                            countryCode: country,
-                            ...state ? {stateCode: state} : {},
-                            countryName: name,
-                            active: sick,
-                            deaths: dead,
-                            confirmed: infected,
-                            vaccinated,
-                            latitude,
-                            longitude,
-                            population: pop,
-                            recovered
-                        }
+                let regionArray = (json as responseData[])
+                for (let i = 0; i < regionArray.length; i++) {
+                    if (regionArray[i].invisible) {
+                        continue
                     }
-                );
+                    const {name, country, dead, infected, state, latitude, longitude, pop, recovered, sick, vaccinated} = regionArray[i];
+                    placeData.push({
+                        countryCode: country,
+                        ...state && {stateCode: state},
+                        countryName: name,
+                        active: sick,
+                        deaths: dead,
+                        confirmed: infected,
+                        vaccinated,
+                        latitude,
+                        longitude,
+                        population: pop,
+                        recovered
+                    })
+                }
             }
         })
         let retries = 3;
