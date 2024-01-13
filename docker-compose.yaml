@@ -31,13 +31,15 @@ services:
   api:
     build: ./
     image: api:v2
+    ports: 
+      - 3000:3000
     restart: always
     networks:
       - api
     volumes: 
       - ./data:/app/data/
-    env_file:
-      - .env
+    # env_file:
+    #   - .env
 
 networks:
   api:
