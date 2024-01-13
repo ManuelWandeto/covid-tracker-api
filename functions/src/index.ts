@@ -9,13 +9,15 @@ import schedule from 'node-schedule'
 
 
 schedule.scheduleJob('getGlobalCountryData', '*/10 * * * *', async () => {
-    try {
-        const countryData = await scrapeGlobalStats()
-        const statusMsg = await writeStatsToFile<CountryData[]>('./data/global_country_data.json', countryData)
-        console.log(statusMsg)
-    } catch (error) {
-        console.log(`Error occured scraping countryData: ${error} at: ${new Date()}`);
-    }
+    setTimeout(async () => {
+        try {
+            const countryData = await scrapeGlobalStats()
+            const statusMsg = await writeStatsToFile<CountryData[]>('./data/global_country_data.json', countryData)
+            console.log(statusMsg)
+        } catch (error) {
+            console.log(`Error occured scraping countryData: ${error} at: ${new Date()}`);
+        }
+    }, Math.floor(Math.random() * (20000 - 100000 + 1)) + 100000);
 })
 
 schedule.scheduleJob('getRegionData', '*/10 * * * *', async () => {
